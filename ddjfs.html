@@ -1,0 +1,185 @@
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="content-type">
+<style type="text/css">
+ul{
+    list-style:none; /* 将默认的列表符号去掉 */
+    padding:0; /* 将默认的内边距去掉 */
+    margin:0; /* 将默认的外边距去掉 */
+    width:100%; 
+}
+ul li { 
+    float:left; /* 往左浮动 */
+}
+input{
+    width:100px;
+}
+</style>
+<script type="text/javascript">
+var droid = new Android();
+droid.makeToast('loaded! 这是一个Toast。');
+function log(msg) {
+    droid.log(msg);
+    document.getElementById('debugContent').innerHTML += '<br>' + msg;
+}
+function isEmptyObject(e) {
+    var t;
+    for (t in e) return !1;
+    return !0
+}
+function sayhi() {
+    var gotEvent = droid.eventWaitFor('windowChanged');
+    droid.eventClearBuffer();
+    if ('com.tencent.mm.ui.contact.SayHiEditUI' == gotEvent.result.data) {
+        droid.inputText('com.tencent.mm:id/nb', document.myform.hiText.value);
+        droid.clickByText('^发送$');
+    }
+}
+function sureSayHiSended(tryCounter) {
+    if (tryCounter < 0) {
+        return;
+    }
+    var isContactInfoUI = false;
+    var curWin1 = droid.curWin();
+    if ('com.tencent.mm.plugin.profile.ui.ContactInfoUI' == curWin1.result) {
+        isContactInfoUI = true;
+    } else {
+        var gotEvent2 = droid.eventWaitFor('windowChanged');
+        droid.eventClearBuffer();
+        if ('com.tencent.mm.plugin.profile.ui.ContactInfoUI' == gotEvent2.result.data) {
+            isContactInfoUI = true;
+        } else if ('com.tencent.mm.ui.base.p' == gotEvent2.result.data) {
+            tryCounter = tryCounter - 1;
+            sureSayHiSended(tryCounter);
+        } else if ('com.tencent.mm.ui.contact.SayHiEditUI' == gotEvent2.result.data) {
+            tryCounter = tryCounter - 1;
+            sureSayHiSended(tryCounter);
+        }
+    }
+    if (isContactInfoUI) {
+        droid.sysAct(1);
+    }
+}
+function loopNearbyList() {
+    var listView = droid.findViewById('com.tencent.mm:id/v4');
+    var listViewChildCount = listView.result.childCount;
+    for (var i = 1; i < listViewChildCount; i++) {
+        var isNearbyUi = false;
+        var curWin = droid.curWin();
+        if ('com.tencent.mm.plugin.nearby.ui.NearbyFriendsUI' == curWin.result) {
+            isNearbyUi = true;
+        } else {
+            var gotEvent = droid.eventWaitFor('windowChanged');
+            droid.eventClearBuffer();
+            if ('com.tencent.mm.plugin.nearby.ui.NearbyFriendsUI' == gotEvent.result.data) {
+                isNearbyUi = true;
+            }
+        }
+        if (isNearbyUi) {
+            droid.clickChild('com.tencent.mm:id/v4', 0, i);
+            var gotEvent = droid.eventWaitFor('windowChanged');
+            droid.eventClearBuffer();
+            if ('com.tencent.mm.plugin.profile.ui.ContactInfoUI' == gotEvent.result.data) {
+                if (isEmptyObject(droid.findViewByText('^打招呼$'))) {
+                    log('没这个按钮！');
+                    droid.sysAct(1);
+                } else {
+                    log('找到按钮了');
+                    droid.clickByText('^打招呼$');
+                    sayhi();
+                    sureSayHiSended(3);
+                }
+            }
+        }
+    }
+    var isNearbyUi = false;
+    var curWin = droid.curWin();
+    if ('com.tencent.mm.plugin.nearby.ui.NearbyFriendsUI' == curWin.result) {
+        isNearbyUi = true;
+    } else {
+        var gotEvent = droid.eventWaitFor('windowChanged');
+        droid.eventClearBuffer();
+        if ('com.tencent.mm.plugin.nearby.ui.NearbyFriendsUI' == gotEvent.result.data) {
+            isNearbyUi = true;
+        }
+    }
+    if (isNearbyUi) {
+        var scrolled = droid.scroll('com.tencent.mm:id/v4');
+        if (scrolled.result) {
+            log('翻页');
+            loopNearbyList();
+        } else {
+            log('到底了');
+        }
+    }
+}
+function checkNearby(tryCounter) {
+    if (tryCounter < 0) {
+        return;
+    }
+    var gotEvent = droid.eventWaitFor('windowChanged');
+    droid.eventClearBuffer();
+    if ('com.tencent.mm.ui.base.p' == gotEvent.result.data) {
+        log('监控到 正在查找附近的人。。。 界面');
+        tryCounter = tryCounter - 1;
+        checkNearby(tryCounter);
+    } else if ('com.tencent.mm.plugin.nearby.ui.NearbyFriendShowSayHiUI' == gotEvent.result.data) {
+        log('进入了 附近的招呼 界面');
+        droid.clickByText('^查看附近的人$');
+        tryCounter = tryCounter - 1;
+        checkNearby(tryCounter);
+    } else if ('com.tencent.mm.plugin.nearby.ui.NearbyFriendsUI' == gotEvent.result.data) {
+        log('确认进入了 附近的人 界面');
+        loopNearbyList();
+    }
+}
+function checkWxMain(tryCounter) {
+    if (tryCounter < 0) {
+        return;
+    }
+    var gotEvent = droid.eventWaitFor('windowChanged');
+    droid.eventClearBuffer();
+    log(gotEvent.result.data);
+    if ('com.tencent.mm.ui.LauncherUI' == gotEvent.result.data) {
+        log('进入了 微信 主界面');
+        droid.clickByText('^发现$');
+        droid.clickByText('^附近的人$');
+        checkNearby(5);
+    } else {
+        log('再次检查。。。tryCounter:' + tryCounter);
+        tryCounter = tryCounter - 1;
+        checkWxMain(tryCounter);
+    }
+}
+function main() {
+    droid.openApp('com.tencent.mm', 'com.tencent.mm.ui.LauncherUI');
+    checkWxMain(5);
+}
+</script>
+</head>
+<body>
+<p> DEMO 微信自动添加好友（附近的人）</p>
+<ul>
+<li style="width:60%;border-right:1px green dotted;">
+测试 测试 测试
+<form name="myform">
+<input type="hidden" value="wxautolike" name="pluginName">
+<p>参数设定1 </p>
+<p>
+内容：
+<input type="text" value="你好！认识一下" name="hiText">
+</p>
+<p>
+<input type="button" onclick="main()" value="启动">
+</p>
+<p>
+<input type="button" onclick="droid.dismiss()" value="退出">
+</p>
+</form>
+</li>
+<li style="width:30%">
+<div id="debugContent">debug msg</div>
+</li>
+</ul>
+</body>
+</html>
