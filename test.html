@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="//cdn.bootcss.com/jquery/1.4.1/jquery.min.js"></script>
+<title>Test</title>
+</head>
+<body style="margin:0px;padding:0px;">
+<div id="msg"></div>
+<script type="text/javascript">
+(function(droid){
+
+    function log(msg) {
+        droid.log(msg);
+        $('#msg').innerHTML += '<br>' + msg;
+    } 
+
+    function main(){
+        log("test");
+    }
+
+
+
+    main();
+
+})(new Android());
+</script>
+</body>
+</html>
